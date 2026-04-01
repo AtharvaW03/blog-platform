@@ -1,8 +1,10 @@
 package com.sprint.blog.mappers;
 
 import com.sprint.blog.domain.CreatePostRequest;
+import com.sprint.blog.domain.UpdatePostRequest;
 import com.sprint.blog.domain.dtos.CreatePostRequestDto;
 import com.sprint.blog.domain.dtos.PostDto;
+import com.sprint.blog.domain.dtos.UpdatePostRequestDto;
 import com.sprint.blog.domain.entities.Post;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -16,4 +18,6 @@ public interface PostMapper {
     PostDto toDto(Post post);
 
     CreatePostRequest toCreatePostRequest(CreatePostRequestDto dto);
+
+    UpdatePostRequest toUpdatePostRequest(UpdatePostRequestDto updatePostRequestDto);
 }

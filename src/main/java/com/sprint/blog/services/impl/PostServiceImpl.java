@@ -2,6 +2,7 @@ package com.sprint.blog.services.impl;
 
 import com.sprint.blog.domain.CreatePostRequest;
 import com.sprint.blog.domain.PostStatus;
+import com.sprint.blog.domain.UpdatePostRequest;
 import com.sprint.blog.domain.entities.Category;
 import com.sprint.blog.domain.entities.Post;
 import com.sprint.blog.domain.entities.Tag;
@@ -10,6 +11,7 @@ import com.sprint.blog.repositories.PostRepository;
 import com.sprint.blog.services.CategoryService;
 import com.sprint.blog.services.PostService;
 import com.sprint.blog.services.TagService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +31,12 @@ public class PostServiceImpl implements PostService {
     private final TagService tagService;
 
     private static final int WORDS_PER_MINUTE = 200;
+
+    @Override
+    public Post getPost(UUID id) {
+        return postRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Post does not exist with ID " + id));
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -80,6 +89,43 @@ public class PostServiceImpl implements PostService {
         List<Tag> tags = tagService.getTagByIds(tagIds);
         newPost.setTags(new HashSet<>(tags));
         return postRepository.save(newPost);
+    }
+
+    @Override
+    @Transactional
+    public Post updatePost(UUID id, UpdatePostRequest updatePostRequest) {
+        Post existingPost = postRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Post does not exist with id " + id));
+        existingPost.setTitle(updatePostRequest.getTitle());
+        String postContent = updatePostRequest.getContent();
+        existingPost.setContent(postContent);
+        existingPost.setReadingTime(calculateReadingTime(postContent));
+
+        PostStatus status = updatePostRequest.getStatus();
+        if(status != null){
+            existingPost.setStatus(status);
+        }
+
+        UUID updatePostRequestCategoryId = updatePostRequest.getCategoryId();
+        if(!existingPost.getCategory().getId().equals(updatePostRequestCategoryId)){
+            Category newCategory = categoryService.getCategoryById(updatePostRequestCategoryId);
+            existingPost.setCategory(newCategory);
+        }
+
+        Set<UUID> existingTagIds = existingPost.getTags().stream().map(Tag::getId).collect(Collectors.toSet());
+        Set<UUID> updatePostRequestTagIds = updatePostRequest.getTagIds();
+        if(!existingPost.equals(updatePostRequestTagIds)){
+            List<Tag> newTags = tagService.getTagByIds(updatePostRequestTagIds);
+            existingPost.setTags(new HashSet<>(newTags));
+        }
+        return postRepository.save(existingPost);
+
+    }
+
+    @Override
+    public void deletePost(UUID id) {
+        Post post = getPost(id);
+        postRepository.delete(post);
     }
 
     private Integer calculateReadingTime(String content){
